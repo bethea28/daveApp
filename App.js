@@ -1,96 +1,139 @@
 import React from 'react'
-import { StatusBar } from 'expo-status-bar'
-import {
-  StyleSheet,
-  Text,
-  View,
-  SafeAreaView,
-  ImageBackground,
-} from 'react-native'
-import { fetchTips } from './src/Api'
-import { TipOptionsComp } from './src/TipOptionsComp/TipOptions'
-import { TipButtonComp } from './src/TipButtonComp/TipButton'
-import { SloganComp } from './src/SloganComp/Slogan'
+import { View, Button, SafeAreaView } from 'react-native'
+import { WebView } from 'react-native-webview'
 
-const image = require('./assets/dave.png')
-const imageTwo = require('./assets/background.png')
-const sloganOne = 'Pay Nothing Now. Collected On Payback!'
-const sloganTwo =
-  'Your Optional Tips Help Us Stay In Business. We Also Plant A Tree For Every % Tip!'
-// const image = { uri: 'https://reactjs.org/logo-og.png' }
-console.log('images', image)
-
-export default function App() {
-  const [tipOptions, setTipOptions] = React.useState([])
-  const [selectedOption, setSelectedOption] = React.useState(0)
-  const [advanceAmount, setAdvanceAmount] = React.useState([])
-  React.useEffect(() => {
-    const fetchData = async () => {
-      const req = await fetchTips()
-      setTipOptions([{ percent: 0, trees: 'No Tip' }, ...req.tipOptions])
-      setAdvanceAmount(req.advanceAmount)
-    }
-    fetchData()
-  }, [])
-
-  const handleTipPress = (event, index) => {
-    console.log('hey tip press', index)
-    setSelectedOption(tipOptions[index].percent)
+const getRandomColor = () => {
+  let letters = '0123456789ABCDEF'
+  let color = '#'
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)]
   }
-  const handleTipConfirm = () => {
-    // alert(`Thank you for your $${advanceAmount * selectedOption * 0.01} tip!`)
-  }
-  return (
-    <>
-      <SafeAreaView
-        style={{ flex: 0, backgroundColor: 'black' }}
-      ></SafeAreaView>
-      <SafeAreaView style={styles.container}>
-        <ImageBackground style={{ height: 400 }} source={imageTwo}>
-          <ImageBackground
-            style={{
-              position: 'absolute',
-              right: 0,
-              left: 0,
-              top: 260,
-              bottom: 0,
-              height: 140,
-            }}
-            source={image}
-          >
-            <View style={{ position: 'relative', bottom: 150 }}>
-              <SloganComp slogan={sloganTwo} />
-            </View>
-          </ImageBackground>
-        </ImageBackground>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'orange',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <TipOptionsComp
-            handleTipPress={handleTipPress}
-            advanceAmount={advanceAmount}
-            tipOptions={tipOptions}
-          />
-          <SloganComp slogan={sloganOne} />
-          <TipButtonComp
-            selectedOption={selectedOption}
-            handleTipConfirm={handleTipConfirm}
-          />
-        </View>
-      </SafeAreaView>
-    </>
-  )
+  return color
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    // backgroundColor: 'black',
-    // alignItems: 'center',
-    // justifyContent: 'center',
-  },
-})
+class App extends React.Component {
+  constructor(props) {
+    super(props)
+    this.webref = React.createRef()
+  }
+
+  componentDidMount() {
+    console.log('webview', this.webref)
+    // console.log('window', window.ReactNativeWebView)
+    // this.webref.current.injectJavaScript(
+    //   `document.querySelector('h1').style.backgroundColor = '${'red'}'`
+    // )
+    // window.ReactNativeWebView.postMessage(JSON.stringify({ key: 'bryan' }))
+  }
+
+  onPressWorks = (event) => {
+    let test = `document.querySelector('h1')`
+    console.log('test', this.webref)
+    // this.webref.current.postMessage(`'bryan'`)
+    // return `window.ReactNativeWebView.postMessage(JSON.stringify({ key: 'chris' }))`
+
+    //send script to webview
+    this.webref.current.postMessage(`JSON.stringify({ key: 'send to daata' })`)
+
+    this.webref.current.injectJavaScript(
+      `document.querySelectorAll('h1')[0].style.backgroundColor = '${getRandomColor()}'`
+    )
+  }
+  handleNavigationStateChanged = (props) => {
+    console.log('state changed', props) ///
+    return `window.ReactNativeWebView.postMessage(JSON.stringify({key : "window changed"}))`
+  }
+  onMessage = (event) => {
+    console.log('on message event', event.nativeEvent)
+    // const data = JSON.parse(event.nativeEvent.data)
+    // console.log('tesst this bitch', data.key)
+  }
+  render() {
+    // setInterval(() => {
+    //   // this.webref.current.injectJavaScript(scripts())
+    //   scripts()
+    // }, 3500)
+    // const scripts = () => {
+    //   console.log('this web', this.webref, getRandomColor())
+    //   // return  `document.querySelector('body').style.backgroundColor = 'orange'`
+    //   this.webref.current.injectJavaScript(
+    //     `document.querySelector('body').style.backgroundColor = '${getRandomColor()}'`
+    //   )
+    // }
+    //send to from webview to react
+    const INJECTED_JAVASCRIPT = `(function() {
+    window.ReactNativeWebView.postMessage(JSON.stringify({key : "bryan"}));
+})();`
+
+    // inject on load
+    const stringifiedPatchPostMessage = `
+(function () {
+  const links = document.querySelectorAll('p  ');
+  links.forEach((a) => {
+      window.console.log('what up dawg')
+      a.addEventListener('click', (event) => {
+        a.style.color='red'
+        window.ReactNativeWebView.postMessage(JSON.stringify({key: a.innerHTML}));
+      });
+
+      a.style.backgroundColor = '${getRandomColor()}';
+    
+  })
+})();
+
+true;`
+
+    const query = `document.querySelector('h1').style.backgroundColor = '${getRandomColor()}'`
+    const queryTwo = `window.ReactNativeWebView.postMessage(JSON.stringify({key : "bryan"})`
+    return (
+      <SafeAreaView style={{ flex: 1 }}>
+        <WebView
+          ref={this.webref}
+          source={{ uri: 'https://educative.io' }}
+          //           source={{
+          //             html: `
+          //           <html>
+          //           <head>
+          //             <meta name="viewport" content="width=device-width, initial-scale=1" />
+          //           </head>
+          //           <body
+          //             style="
+          //               display: flex;
+          //               justify-content: center;
+          //               flex-direction: column;
+          //               align-items: center;
+          //             "
+          //           >
+          //             <button
+          //             onclick="sendDataToReactNativeApp()"
+          //               style="
+          //                 padding: 20;
+          //                 width: 200;
+          //                 font-size: 20;
+          //                 color: white;
+          //                 background-color: #6751ff;
+          //               "
+          //             >
+          //               Send Data To React Native App
+          //             </button>
+          //             <script>
+          //               const sendDataToReactNativeApp = async () => {
+          //                 window.ReactNativeWebView.postMessage('Data from WebView / Website');
+          //               };
+
+          //             </script>
+          //           </body>
+          //         </html>
+          // `,
+          // }}
+          injectedJavaScript={stringifiedPatchPostMessage}
+          onNavigationStateChange={this.handleNavigationStateChanged}
+          onMessage={this.onMessage}
+        />
+        {/* <Button onPress={this.onPressWorks} title={'Works'} /> */}
+      </SafeAreaView>
+    )
+  }
+}
+
+export default App
